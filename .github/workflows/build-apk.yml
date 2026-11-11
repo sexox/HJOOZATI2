@@ -13,14 +13,24 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract Project Zip
+      - name: Extract Project Zip & Move Files
         run: |
           if [ -f "HJOOZATI_Prdect.zip" ]; then
             unzip -o HJOOZATI_Prdect.zip
           elif [ -f "HJOOZATI_Project_Ready.zip" ]; then
             unzip -o HJOOZATI_Project_Ready.zip
+          elif [ -f "HJOOZATI_Project.zip" ]; then
+            unzip -o HJOOZATI_Project.zip
           else
             unzip -o *.zip || true
+          fi
+
+          # نقل محتويات أي مجلد فرعي إلى المسار الرئيسي تلقائياً
+          SUBDIR=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".*" | head -n 1)
+          if [ -n "$SUBDIR" ]; then
+            echo "Moving contents from $SUBDIR to root directory..."
+            cp -r $SUBDIR/* . 2>/dev/null || true
+            cp -r $SUBDIR/.* . 2>/dev/null || true
           fi
 
       - name: Set up JDK 17
@@ -29,8 +39,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew || true
+      - name: Ensure Gradle Wrapper Exists
+        run: |
+          if [ ! -f "./gradlew" ]; then
+            echo "gradlew not found, generating Gradle Wrapper..."
+            gradle wrapper
+          fi
+          chmod +x gradlew
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
